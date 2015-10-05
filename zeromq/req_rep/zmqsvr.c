@@ -14,7 +14,7 @@ int main(void)
     {
         printf("\nloop seq: %d\n", seq++);
         int msg_size = 0;
-        char buf[10] = {0};
+        char buf[32] = {0};
         zmq_msg_t request;
         zmq_msg_init(&request);
         zmq_msg_recv(&request, zmq_sock, 0);
