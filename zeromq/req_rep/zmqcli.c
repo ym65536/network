@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define MSG_SIZE    32
+#define MSG_SIZE    256
 
 int main(void)
 {
@@ -12,13 +12,14 @@ int main(void)
     void* zmq_sock = zmq_socket(zmq_ctx, ZMQ_REQ);
     zmq_connect(zmq_sock, "tcp://localhost:5555");
     int pid = getpid();
-
+    char buf[MSG_SIZE] = {0};
+    
     int index = 0;
-    for (index = 0; index < 10; index++)
+    printf("ym65536#");
+    while (gets(buf) && strcmp(buf, "quit"))
     {
-        printf("\nloop seq:%d\n", index);
-        char buf[MSG_SIZE] = {0};
-        sprintf(buf, "pid:%d hello%d", pid, index);
+        int len = strlen(buf) > 200 ? 200: strlen(buf);
+        sprintf(&buf[len], " id:<%d,%d>", pid, index);
         zmq_msg_t request;
         zmq_msg_init_size(&request, strlen(buf));
         memcpy(zmq_msg_data(&request), buf, strlen(buf));
@@ -33,6 +34,8 @@ int main(void)
         memcpy(buf, zmq_msg_data(&reply), zmq_msg_size(&reply));
         printf("recv reply: %s\n", buf);
         zmq_msg_close(&reply);
+        index++;
+        printf("ym65536#");
     }
 
     sleep(1);
