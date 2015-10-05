@@ -1,4 +1,4 @@
-TARGET = zmqsvr zmqcli
+TARGET = zmqsvr zmqcli zmqbroker
 
 all: $(TARGET)
 
@@ -9,6 +9,9 @@ zmqsvr:zmqsvr.c
 	gcc $(CFLAGS) $< -o $@ $(LDFLAGS) -lzmq
 
 zmqcli:zmqcli.c
+	gcc $(CFLAGS) $< -o $@ $(LDFLAGS) -lzmq
+
+zmqbroker:zmqbroker.c
 	gcc $(CFLAGS) $< -o $@ $(LDFLAGS) -lzmq
 
 clean:

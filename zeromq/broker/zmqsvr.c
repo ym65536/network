@@ -8,9 +8,8 @@ int main(void)
 {
     void* zmq_ctx = zmq_ctx_new();
     void* zmq_sock = zmq_socket(zmq_ctx, ZMQ_REP);
-    zmq_bind(zmq_sock, "tcp://*:5555");
+    zmq_connect(zmq_sock, "tcp://localhost:5560");
 
-    printf("start listen for socket...\n");
     int seq = 0;
     while (1)
     {
