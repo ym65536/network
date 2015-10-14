@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <event.h>
+#include "dlist.h"
 
 #define BUF_SIZE	1024
 char buf[BUF_SIZE];
@@ -16,6 +17,13 @@ char buf[BUF_SIZE];
 void on_accept(int sock, short event, void* arg);
 void on_read(int sock, short event, void* arg);
 
+struct event_list
+{
+    struct event ev;
+    struct list_head list;
+};
+
+struct event_list evlist;
 struct event_base* evbase = NULL;
 
 int main(void)
@@ -24,8 +32,9 @@ int main(void)
 	struct sockaddr_in svraddr;
 	int nready = 0;
 	int i = 0;
-
-	if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    INIT_LIST_HEAD(&evlist.list); 
+	
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("socket error");
 		return -1;
@@ -49,10 +58,11 @@ int main(void)
 	}
 		
     evbase = event_base_new();
-    struct event evlisten;
-    event_set(&evlisten, listenfd, EV_READ | EV_PERSIST, on_accept, (void* )evbase);
-    event_base_set(evbase, &evlisten);
-    event_add(&evlisten, NULL);
+    struct event_list* evlisten = (struct event_list* )malloc(sizeof(struct event_list));
+    list_add_tail(&(evlisten->list), &(evlist.list));
+    event_set(&(evlisten->ev), listenfd, EV_READ | EV_PERSIST, on_accept, (void* )evbase);
+    event_base_set(evbase, &(evlisten->ev));
+    event_add(&(evlisten->ev), NULL);
 
     event_base_dispatch(evbase);
     printf("The End.\n");
@@ -74,10 +84,10 @@ void on_accept(int sock, short event, void* arg)
     }
     printf("recv sock %d: <%s:%d>\n", fd, inet_ntoa(cliaddr.sin_addr), htons(cliaddr.sin_port));
 
-    struct event* evread = (struct event* )malloc(sizeof(struct event));
-    event_set(evread, fd, EV_READ | EV_PERSIST, on_read, (void* )evread);
-    event_base_set(evbase, evread);
-    event_add(evread, NULL);
+    struct event_list* evread = (struct event_list* )malloc(sizeof(struct event_list));
+    event_set(&(evread->ev), fd, EV_READ | EV_PERSIST, on_read, (void* )evread);
+    event_base_set(evbase, &(evread->ev));
+    event_add(&(evread->ev), NULL);
 }
 
 void on_read(int sock, short event, void* arg)
