@@ -14,27 +14,24 @@ int main(void)
     while (1)
     {
         printf("\nloop seq: %d\n", seq++);
-        int msg_size = 0;
-        char buf[MSG_SIZE + 1] = {0};
-        zmq_msg_t request;
-        zmq_msg_init(&request);
-        zmq_msg_recv(&request, zmq_sock, 0);
-        msg_size = zmq_msg_size(&request);
-        memcpy(buf, zmq_msg_data(&request), msg_size);
-        printf("recv request: %s\n", buf);
-        zmq_msg_close(&request);
-
+   //     char buf[MSG_SIZE + 1] = {0};
+        int more = 1;
+        zmq_msg_t message;
+        while (1)
+        {
+            zmq_msg_init(&message);
+            zmq_msg_recv(&message, zmq_sock, 0);
+            printf("recv/send: size = %d\n", zmq_msg_size(&message));
+            uint32_t more_size = sizeof(more);
+            zmq_getsockopt(zmq_sock, ZMQ_RCVMORE, &more, &more_size);
+            zmq_msg_send(&message, zmq_sock, more ? ZMQ_SNDMORE : 0);
+            zmq_msg_close(&message);
+            if (!more)
+                break;
+        }
         sleep(1);
-
-        zmq_msg_t reply;
-        zmq_msg_init_size(&reply, msg_size);
-        memcpy(zmq_msg_data(&reply), buf, msg_size);
-        printf("send reply: %s\n", buf);
-        zmq_msg_send(&reply, zmq_sock, 0);
-        zmq_msg_close(&reply);
     }
 
-    sleep(1);
     zmq_close(zmq_sock);
     zmq_ctx_destroy(zmq_ctx);
 
