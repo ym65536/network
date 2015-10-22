@@ -24,24 +24,17 @@ int main(void)
         zmq_poll(items, 2, -1);
         if (items[0].revents & ZMQ_POLLIN)
         {
-            int idx = 0;
-            zmq_msg_t message[10];
+            zmq_msg_t message;
             while (1)
             {
-                zmq_msg_init(&message[idx]);
-                zmq_msg_recv(&message[idx], front_sock, 0);
-                printf("router recv/send: size = %d\n", zmq_msg_size(&message[idx]));
+                zmq_msg_init(&message);
+                zmq_msg_recv(&message, front_sock, 0);
+                printf("router recv/send: size = %d\n", zmq_msg_size(&message));
                 uint32_t more_size = sizeof(more);
                 zmq_getsockopt(front_sock, ZMQ_RCVMORE, &more, &more_size);
+                zmq_msg_send(&message, back_sock, more ? ZMQ_SNDMORE | ZMQ_NOBLOCK: 0);
                 if (!more)
                     break;
-                idx++;
-            }
-            int i = 0;
-            for (i = 0; i < idx; i++)
-            {
-                zmq_msg_send(&message[i], back_sock, (i == (idx - 1)) ? 0 : ZMQ_SNDMORE);
-                zmq_msg_close(&message[i]);
             }
         }
         if (items[1].revents & ZMQ_POLLIN)

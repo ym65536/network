@@ -47,7 +47,7 @@ int main(void)
             zmq_msg_close(&blankMsg);
 
             // send addr info
-            zmq_msg_t addrMsg;
+/*            zmq_msg_t addrMsg;
             struct addrinfo addr;
             addr.ip = ntohl(inet_addr("10.10.15.15"));
             addr.port = htons(5555);
@@ -56,7 +56,7 @@ int main(void)
             memcpy(zmq_msg_data(&addrMsg), (char* )&addr, sizeof(addr));
             zmq_msg_send(&addrMsg, zmq_sock, ZMQ_SNDMORE);
             zmq_msg_close(&addrMsg);
-
+*/
             zmq_msg_t request;
             zmq_msg_init_size(&request, strlen(buf));
             memcpy(zmq_msg_data(&request), buf, strlen(buf));
@@ -73,18 +73,18 @@ int main(void)
             zmq_msg_t blankMsg;
             zmq_msg_init(&blankMsg);
             zmq_msg_recv(&blankMsg, zmq_sock, 0);
-            zmq_msg_close(&blankMsg);
             printf("recv: msgsize=%d\n", zmq_msg_size(&blankMsg));
+            zmq_msg_close(&blankMsg);
 
             // recv addr info
-            zmq_msg_t addrMsg;
+/*            zmq_msg_t addrMsg;
             struct addrinfo addr;
             zmq_msg_init(&addrMsg);
             zmq_msg_recv(&addrMsg, zmq_sock, 0);
             memcpy((char*)&addr, zmq_msg_data(&addrMsg), sizeof(addr));
             zmq_msg_close(&addrMsg);
             printf("recv: ip:%08x, port:%d\n", addr.ip, addr.port);
-
+*/
             memset(buf, 0, sizeof(buf));
             zmq_msg_t reply;
             zmq_msg_init(&reply);
