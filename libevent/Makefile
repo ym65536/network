@@ -1,6 +1,6 @@
 TARGET = eventsvr eventcli
 
-CFLAGS = -g -O0 -I/usr/local/libevent/include
+CFLAGS = -g -O0 -I/usr/local/libevent/include -I../include/
 LDFLAGS= -L /usr/local/libevent/lib -levent
 
 all: $(TARGET)
