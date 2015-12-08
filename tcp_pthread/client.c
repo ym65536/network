@@ -8,14 +8,18 @@
 #define BACK_LOG	5
 #define BUFFER_SIZE	1024
 
+void* copyto(void* arg);
+
+int g_sockfd = 0;
+
 int main(int argc, char* argv[])
 {
 	int sockfd;
 	socklen_t socklen = sizeof(struct sockaddr_in);
 	struct sockaddr_in svraddr;
 	char recvbuf[BUFFER_SIZE];
-	char sendbuf[BUFFER_SIZE];
 	int nbyte = 0;
+	pthread_t tid;
 
 	if (argc != 2)
 	{
@@ -41,17 +45,14 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 	printf("connect to server ... success\n");
+
+	g_sockfd = sockfd;
+	pthread_create(&tid, NULL, copyto, NULL);
 	
 	printf("ym65536#");
 	fflush(stdout);
-	while (fgets(sendbuf, BUFFER_SIZE, stdin) != NULL)
+	while (1)
 	{
-		if (strncmp(sendbuf, "quit", 4) == 0)
-		{
-			close(sockfd);
-			exit(0);
-		}
-		write(sockfd, sendbuf, strlen(sendbuf));
 		nbyte = read(sockfd, recvbuf, BUFFER_SIZE);
 		if (nbyte <= 0)
 		{
@@ -64,7 +65,7 @@ int main(int argc, char* argv[])
 				perror("read");
 			}
 			close(sockfd);
-			break;
+			exit(0);
 		}
 		recvbuf[nbyte] = '\0';
 		fputs(recvbuf, stdout);
@@ -75,3 +76,20 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+void* copyto(void* arg)
+{
+	int len = 0;
+	char sendbuf[BUFFER_SIZE];
+	while (fgets(sendbuf, BUFFER_SIZE, stdin) != NULL)
+	{
+		if (strncmp(sendbuf, "quit", 4) == 0)
+		{
+			close(g_sockfd);
+			exit(0);
+		}
+		len = strlen(sendbuf);
+		sendbuf[len - 1] = '\0';
+		printf("<read %s from stdin>\n", sendbuf);
+		write(g_sockfd, sendbuf, strlen(sendbuf));
+	}
+}

@@ -64,6 +64,7 @@ void* event_deal(void *arg)
 	int connfd = *(int* )arg;
 	char buf[BUFFER_SIZE] = {0};
 	int nbyte = 0;
+	int i = 0;
 	free(arg);
 
 	while (1)
@@ -82,7 +83,14 @@ void* event_deal(void *arg)
 			close(connfd);
 			break;
 		}
-		printf("recv %d: %s", nbyte, buf);
+		buf[nbyte] = '\0';
+		printf("recv %d: %s\n", nbyte, buf);
+		
+		for (i = 0; i < 10; i++)
+		{
+			printf("deal something ...\n");
+			sleep(1);
+		}
 		if (strncmp(buf, "quit", 4) == 0)
 		{
 			printf("client  send quit, close.\n");
@@ -90,7 +98,7 @@ void* event_deal(void *arg)
 			break;
 		}
 		write(connfd, buf, strlen(buf));
-		printf("send %d: %s", nbyte, buf);
+		printf("send %d: %s\n", nbyte, buf);
 	}
 	
 	return NULL;
