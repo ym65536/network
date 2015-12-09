@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 			exit(0);
 		}
 		recvbuf[nbyte] = '\0';
-		fputs(recvbuf, stdout);
+		printf("recv: %s\n", recvbuf);
 		printf("ym65536#");
 		fflush(stdout);
 	}
