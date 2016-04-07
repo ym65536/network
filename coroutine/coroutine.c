@@ -281,6 +281,7 @@ int Go(int (*UserRoutine)(void *ptr), int event_fd)
 		{
 			//Start New Routine
 			UserRoutine((void*)(long)conn_fd);
+			printf("UserRoutine[%d] resumed in Go\n", conn_fd);
 		}
 	} 
 	else
@@ -289,26 +290,25 @@ int Go(int (*UserRoutine)(void *ptr), int event_fd)
 		printf("[Main Loop] Events Arrived, Wake Up UserRoutine[%d]\n", conn_fd);
 		Schedule(conn_fd);
 	}
-	//printf("UserRoutine[%d] resumed in Go\n", conn_fd);
 }
 
 
 void ParseParams(const char* argv[])
 {
-	g_server_ip = argv[1];
-	g_server_port = (unsigned short)atoi(argv[2]);
-	g_ip_A = argv[3];
-	g_port_A = (unsigned short)atoi(argv[4]);
-	g_ip_B = argv[5];
-	g_port_B = (unsigned short)atoi(argv[6]);
+	g_server_ip = "127.0.0.1"; //argv[1];
+	g_server_port = 3333;//(unsigned short)atoi(argv[2]);
+	g_ip_A = "127.0.0.1";//argv[3];
+	g_port_A = 1111;//(unsigned short)atoi(argv[4]);
+	g_ip_B = "127.0.0.1";//argv[5];
+	g_port_B = 2222;//(unsigned short)atoi(argv[6]);
 }
 
 int main(int argc, const char *argv[])
 {
 	if (argc < 7)
 	{
-		fprintf(stderr, "usage: server <ip> <port> <leaf_A_ip> <leaf_A_port> <leaf_B_ip> <leaf_B_port>\n");
-		exit(1);
+//		fprintf(stderr, "usage: server <ip> <port> <leaf_A_ip> <leaf_A_port> <leaf_B_ip> <leaf_B_port>\n");
+//		exit(1);
 	}
 	
 	ParseParams(argv);
