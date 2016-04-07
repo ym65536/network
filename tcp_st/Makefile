@@ -2,7 +2,7 @@ TARGET = server client
 
 OS = LINUX
 BUILD = DBG
-STDIR = /mnt/software/st-1.9
+STDIR = /mnt/software/statethread
 TARGETDIR   = $(STDIR)/$(OS)_$(shell uname -r)_$(BUILD)
 
 LIB = $(TARGETDIR)/libst.a
@@ -15,6 +15,9 @@ server: server.c
 
 client: client.c
 	gcc -g $< -o $@ $(LIB) -pthread
+
+hugest: hugest.c
+	gcc $(CFLAG) $< -o $@ $(LIB)
 
 clean:
 	rm -rf $(TARGET)

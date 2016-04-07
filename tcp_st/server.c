@@ -62,36 +62,20 @@ int main(int argc, char* argv[])
 
 	while (1)
 	{
-/*		int* ipfd = (int* )malloc(sizeof(int));
-		if (!ipfd)
-		{
-			printf("alloc error\n");
-			return -1;
-		}
-		*ipfd = accept(listenfd, (struct sockaddr* )&cliaddr, &socklen);
-		if (*ipfd < 0)
-		{
-			perror("accept");
-			return -1;
-		}
-		printf("client %d connect...success\n", *ipfd);
-		pthread_create(&tid, NULL, event_deal, ipfd);
-	}
-*/
-    n = sizeof(cliaddr);
-    clinfd = st_accept(svrnfd, (struct sockaddr *)&cliaddr, &n, ST_UTIME_NO_TIMEOUT);
-    if (clinfd == NULL) 
-	{
-		perror("st_accept");
-		exit(1);
-    }
+        n = sizeof(cliaddr);
+        clinfd = st_accept(svrnfd, (struct sockaddr *)&cliaddr, &n, ST_UTIME_NO_TIMEOUT);
+        if (clinfd == NULL) 
+        {
+            perror("st_accept");
+            exit(1);
+        }
 
-    if (st_thread_create(handle_request, clinfd, 0, 0) == NULL) 
-	{
-		perror("st_thread_create");
-		exit(1);
+        if (st_thread_create(handle_request, clinfd, 0, 0) == NULL) 
+        {
+            perror("st_thread_create");
+            exit(1);
+        }
     }
-  }
 }
 
 void* handle_request(void *arg)
@@ -134,6 +118,7 @@ void* handle_request(void *arg)
 		st_write(connfd, buf, strlen(buf), ST_UTIME_NO_TIMEOUT);
 		printf("send %d: %s\n", nbyte, buf);
 	}
-	
+	st_thread_exit(NULL);
+
 	return NULL;
 }
