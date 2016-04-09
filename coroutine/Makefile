@@ -3,11 +3,17 @@ TARGET := client coroutine serverA serverB
 
 all: $(TARGET)
 
-client: client.c
+#$(TARGETDIR)/md.o: md.S
+#	$(CC) $(CFLAGS) -c $< -o $@
+
+#$(TARGETDIR)/%.o: %.c common.h md.h
+#	$(CC) $(CFLAGS) -c $< -o $@
+
+client: client.c 
 	gcc -g $< -o $@
 
-coroutine: coroutine.c
-	gcc -g $< -o $@
+coroutine: coroutine.c md.S 
+	gcc -g $? -o $@
 
 serverA: serverA.c
 	gcc -g $< -o $@

@@ -23,6 +23,7 @@
 #include <setjmp.h>
 #include <sys/epoll.h>
 #include <string.h>
+#include "md.h"
 
 #define MAX_COROUTINE 1024
 #define MAX_EVENTS MAX_COROUTINE
@@ -55,6 +56,13 @@ int CreateListenSocket(const char *ip, unsigned short port)
 	server_addr.sin_family = AF_INET;
 	inet_aton(ip, &server_addr.sin_addr);
 	server_addr.sin_port = htons(port);
+	
+	int yes = 1;
+	if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+	{
+		perror("setsockopt error");
+		exit(1);
+	}
 
 	if (bind(listen_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
 	{
@@ -103,7 +111,7 @@ void RecvRequest(int conn_fd)
 		jmp_buf jmpto;
 		memcpy(jmpto, pctx->thread_env, sizeof(jmp_buf));
 		memset(pctx, 0, sizeof(context_t));
-		longjmp(jmpto, 1);
+		MT_LONGJMP(jmpto, 1);
 		return;
 	}
 
@@ -229,10 +237,10 @@ void Schedule(int conn_fd)
 	memcpy(last_env, pctx->thread_env, sizeof(jmp_buf));
 
 	//save current env and jump to last save point (inside epoll loop)
-	if (setjmp(pctx->thread_env) == 0)
+	if (MT_SETJMP(pctx->thread_env) == 0)
 	{
 		printf("[UserRoutine %d] @Schedule: Save and Switch Context\n", conn_fd); 		
-		longjmp(last_env, 1);
+		MT_LONGJMP(last_env, 1);
 	}
 
 	//re-schedule jumps back here
@@ -277,19 +285,18 @@ int Go(int (*UserRoutine)(void *ptr), int event_fd)
 
 	if (pctx->started == 0)
 	{
-		if (setjmp(pctx->thread_env) == 0)	
+		if (MT_SETJMP(pctx->thread_env) == 0)	
 		{
 			//Start New Routine
 			UserRoutine((void*)(long)conn_fd);
-			printf("UserRoutine[%d] resumed in Go\n", conn_fd);
 		}
+		printf("UserRoutine[%d] resumed in Go\n", conn_fd);
+        return 0;
 	} 
-	else
-	{
-		//Awaken coresponding thread
-		printf("[Main Loop] Events Arrived, Wake Up UserRoutine[%d]\n", conn_fd);
-		Schedule(conn_fd);
-	}
+		
+    //Awaken coresponding thread
+	printf("[Main Loop] Events Arrived, Wake Up UserRoutine[%d]\n", conn_fd);
+	Schedule(conn_fd);
 }
 
 
@@ -340,16 +347,5 @@ int main(int argc, const char *argv[])
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
