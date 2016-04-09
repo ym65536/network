@@ -253,6 +253,7 @@ int UserRoutine(void *ptr)
 {
 	StackProtect
 
+	int i = 0;
 	current_conn_fd = (int)(long)ptr;	
 	printf("[UserRoutine %d] Start\n", current_conn_fd);
 
@@ -262,22 +263,27 @@ int UserRoutine(void *ptr)
 	RecvRequest(current_conn_fd);
 
 	SendRequestA(current_conn_fd);
+	i++;
 	Schedule(current_conn_fd);
+	i++;
 	RecvResponseA(current_conn_fd);
 
 	SendRequestB(current_conn_fd);
+	i++;
 	Schedule(current_conn_fd);
+	i++;
 	RecvResponseB(current_conn_fd);
 
 	SendResponse(current_conn_fd);
 	pctx->started = 0;
 
 	printf("[UserRoutine %d] End\n", current_conn_fd);
+	return i;
 }
 
 int Go(int (*UserRoutine)(void *ptr), int event_fd)
 {
-	StackProtect
+//	StackProtect
 
 
 	int conn_fd = accepted_sock[event_fd];
@@ -339,7 +345,8 @@ int main(int argc, const char *argv[])
 				AddEvents(g_epoll_fd, conn_fd, EPOLLIN | EPOLLET);
 				accepted_sock[conn_fd] = conn_fd;
 				memset(&context_pool[conn_fd], 0, sizeof(context_t));
-			} else
+			} 
+			else
 			{
 				//printf("events on conn_fd = %d\n", events[i].data.fd);
 				Go(UserRoutine, events[i].data.fd);

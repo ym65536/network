@@ -1,4 +1,5 @@
-
+CC := gcc
+CFLAGS := -g -fno-stack-protector
 TARGET := client coroutine serverA serverB
 
 all: $(TARGET)
@@ -13,7 +14,7 @@ client: client.c
 	gcc -g $< -o $@
 
 coroutine: coroutine.c md.S 
-	gcc -g $? -o $@
+	$(CC) $(CFLAGS) $? -o $@
 
 serverA: serverA.c
 	gcc -g $< -o $@
