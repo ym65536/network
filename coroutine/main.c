@@ -13,40 +13,15 @@
  *        'CBA'
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <setjmp.h>
-#include <sys/epoll.h>
-#include <string.h>
-#include "md.h"
-
-#define MAX_COROUTINE 1024
-#define MAX_EVENTS MAX_COROUTINE
-#define MAX_DATA_BUF 256
-#define StackProtect char stack_down[1024 * 1024];
+#include "common.h"
 
 static const char *g_server_ip, *g_ip_A, *g_ip_B;
 static unsigned short g_server_port, g_port_A, g_port_B;
 static int g_epoll_fd;
 
-typedef struct context
-{
-	int started;
-	jmp_buf thread_env; //last saved stack and register info
-	char data[MAX_DATA_BUF];
-	int data_len;
-	int event_fd;
-} context_t; 
+extern st_thread_t st_thread_pool[MAX_COROUTINE];  //indexed by accepted socket fd
 
-context_t context_pool[MAX_COROUTINE];  //indexed by accepted socket fd
-
-int accepted_sock[MAX_EVENTS]; //accepted socket id indexed by event fd
-
+extern int accepted_sock[MAX_EVENTS]; //accepted socket id indexed by event fd
 
 int CreateListenSocket(const char *ip, unsigned short port)
 {
@@ -94,7 +69,7 @@ void AddEvents(int epoll_fd, int sock_fd, int events)
 
 void RecvRequest(int conn_fd)
 {
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	pctx->data_len = recv(conn_fd, pctx->data, sizeof(pctx->data), 0);
 	if (pctx->data_len < 0)
@@ -109,8 +84,8 @@ void RecvRequest(int conn_fd)
 		printf("[UserRoutine %d] Client Closed, Reschedule\n", conn_fd);
 		close(conn_fd);
 		jmp_buf jmpto;
-		memcpy(jmpto, pctx->thread_env, sizeof(jmp_buf));
-		memset(pctx, 0, sizeof(context_t));
+		memcpy(jmpto, pctx->context, sizeof(jmp_buf));
+		memset(pctx, 0, sizeof(st_thread_t));
 		MT_LONGJMP(jmpto, 1);
 		return;
 	}
@@ -120,7 +95,7 @@ void RecvRequest(int conn_fd)
 
 void SendRequestA(int conn_fd)
 {
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in remote_addr;
@@ -151,7 +126,7 @@ void SendRequestA(int conn_fd)
 
 void SendRequestB(int conn_fd)
 {
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in remote_addr;
@@ -184,7 +159,7 @@ void RecvResponseA(int conn_fd)
 {
 	//printf("RecvResponseA conn_fd = %d\n", conn_fd);
 
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	pctx->data_len = recv(pctx->event_fd, pctx->data, sizeof(pctx->data), 0);
 	if (pctx->data_len < 0)
@@ -201,7 +176,7 @@ void RecvResponseB(int conn_fd)
 {
 	//printf("RecvResponseB conn_fd = %d\n", conn_fd);
 
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	pctx->data_len = recv(pctx->event_fd, pctx->data, sizeof(pctx->data), 0);
 	if (pctx->data_len < 0)
@@ -216,7 +191,7 @@ void RecvResponseB(int conn_fd)
 
 void SendResponse(int conn_fd)
 {
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	ssize_t send_len = send(conn_fd, pctx->data, pctx->data_len, 0);
 	if (send_len < 0)
@@ -226,25 +201,6 @@ void SendResponse(int conn_fd)
 	}
 
 	printf("[UserRoutine %d] Send Response, msg = [%s]\n", conn_fd, pctx->data);
-}
-
-void Schedule(int conn_fd)
-{
-	context_t *pctx = &context_pool[conn_fd];
-
-	//last saved env, we will jump there
-	jmp_buf last_env;
-	memcpy(last_env, pctx->thread_env, sizeof(jmp_buf));
-
-	//save current env and jump to last save point (inside epoll loop)
-	if (MT_SETJMP(pctx->thread_env) == 0)
-	{
-		printf("[UserRoutine %d] @Schedule: Save and Switch Context\n", conn_fd); 		
-		MT_LONGJMP(last_env, 1);
-	}
-
-	//re-schedule jumps back here
-	printf("[UserRoutine %d] @Schedule: Context Resumed\n", conn_fd);
 }
 
 static int current_conn_fd;
@@ -257,7 +213,7 @@ int UserRoutine(void *ptr)
 	current_conn_fd = (int)(long)ptr;	
 	printf("[UserRoutine %d] Start\n", current_conn_fd);
 
-	context_t *pctx = &context_pool[current_conn_fd];
+	st_thread_t *pctx = &st_thread_pool[current_conn_fd];
 
 	pctx->started = 1;
 	RecvRequest(current_conn_fd);
@@ -287,11 +243,11 @@ int Go(int (*UserRoutine)(void *ptr), int event_fd)
 
 
 	int conn_fd = accepted_sock[event_fd];
-	context_t *pctx = &context_pool[conn_fd];
+	st_thread_t *pctx = &st_thread_pool[conn_fd];
 
 	if (pctx->started == 0)
 	{
-		if (MT_SETJMP(pctx->thread_env) == 0)	
+		if (MT_SETJMP(pctx->context) == 0)	
 		{
 			//Start New Routine
 			UserRoutine((void*)(long)conn_fd);
@@ -344,7 +300,7 @@ int main(int argc, const char *argv[])
 				printf("[Main Loop] New Connection, socket fd = %d\n", conn_fd);
 				AddEvents(g_epoll_fd, conn_fd, EPOLLIN | EPOLLET);
 				accepted_sock[conn_fd] = conn_fd;
-				memset(&context_pool[conn_fd], 0, sizeof(context_t));
+				memset(&st_thread_pool[conn_fd], 0, sizeof(st_thread_t));
 			} 
 			else
 			{

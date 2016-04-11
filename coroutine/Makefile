@@ -13,7 +13,7 @@ all: $(TARGET)
 client: client.c 
 	gcc -g $< -o $@
 
-coroutine: coroutine.c md.S 
+coroutine: main.c md.S schedule.c 
 	$(CC) $(CFLAGS) $? -o $@
 
 serverA: serverA.c
