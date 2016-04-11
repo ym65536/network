@@ -1,6 +1,7 @@
 CC := gcc
 CFLAGS := -g -fno-stack-protector
-TARGET := client coroutine serverA serverB
+TOOLS := client serverA serverB
+TARGET := coroutine
 
 all: $(TARGET)
 
@@ -10,17 +11,19 @@ all: $(TARGET)
 #$(TARGETDIR)/%.o: %.c common.h md.h
 #	$(CC) $(CFLAGS) -c $< -o $@
 
-client: client.c 
-	gcc -g $< -o $@
-
 coroutine: main.c md.S schedule.c 
 	$(CC) $(CFLAGS) $? -o $@
 
-serverA: serverA.c
+tools: $(TOOLS)
+
+tools/client: tools/client.c 
 	gcc -g $< -o $@
 
-serverB: serverB.c
+tools/serverA: tools/serverA.c
+	gcc -g $< -o $@
+
+tools/serverB: tools/serverB.c
 	gcc -g $< -o $@
 
 clean:
-	rm -rf $(TARGET)
+	rm -rf $(TARGET) && cd tools && rm -rf $(TOOLS)
