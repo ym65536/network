@@ -46,13 +46,14 @@
 
 #define MD_GET_SP(_t) (_t)->context[0].__jmpbuf[JB_RSP]
 
-//static inline void MD_INIT_CONTEXT(_thread, _sp, _main) 
-//#define MD_INIT_CONTEXT(_thread, _sp, _main)  
-//{											
-//	if (MD_SETJMP((_thread)->context))       
-//		_main();                                
-//	MD_GET_SP(_thread) = (long) (_sp);		
-//};
+#define MD_INIT_CONTEXT(_thread, _sp, _main)  
+/*static inline void MD_INIT_CONTEXT(_thread, _sp, _main) 
+{											
+	if (MD_SETJMP((_thread)->context))       
+		_main();                                
+	MD_GET_SP(_thread) = (long) (_sp);		
+};
+*/
 #define MT_SETJMP(env) _st_md_cxt_save(env)
 #define MT_LONGJMP(env, val) _st_md_cxt_restore(env, val)
 

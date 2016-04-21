@@ -95,7 +95,7 @@ typedef struct _st_clist
 /*****************************************
  * Basic types definitions
  */
-typedef struct _st_stack
+typedef struct st_stack
 {
   _st_clist_t links;
   char *vaddr;                /* Base of stack's allocated memory */
@@ -104,10 +104,7 @@ typedef struct _st_stack
   char *stk_bottom;           /* Lowest address of stack's usable portion */
   char *stk_top;              /* Highest address of stack's usable portion */
   void *sp;                   /* Stack pointer from C's point of view */
-#ifdef __ia64__
-  void *bsp;                  /* Register stack backing store pointer */
-#endif
-} _st_stack_t;
+} st_stack_t;
 
 
 typedef struct st_thread st_thread_t;
@@ -116,21 +113,11 @@ struct st_thread
 {
 	int state;                  /* Thread's state */
 	int flags;                  /* Thread's flags */
-
 	void *(*start)(void *arg);  /* The start function of the thread */
 	void *arg;                  /* Argument of the start function */
 	void *retval;               /* Return value of the start function */
-
-	_st_stack_t *stack;	      /* Info about thread's stack */
-
+	st_stack_t *stack;	      /* Info about thread's stack */
 	_st_clist_t links;          /* For putting on run/sleep/zombie queue */
-	_st_clist_t wait_links;     /* For putting on mutex/condvar wait queue */
-
-	//st_utime_t due;             /* Wakeup time when thread is sleeping */
-	st_thread_t *left;         /* For putting in timeout heap */
-	st_thread_t *right;	      /* -- see docs/timeout_heap.txt for details */
-	int heap_index;
-
 	int started;
 	char data[MAX_DATA_BUF];
 	int data_len;

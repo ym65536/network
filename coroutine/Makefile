@@ -11,7 +11,8 @@ all: $(TARGET)
 #$(TARGETDIR)/%.o: %.c common.h md.h
 #	$(CC) $(CFLAGS) -c $< -o $@
 
-coroutine: main.c md.S schedule.c 
+#coroutine: main.c md.S schedule.c 
+coroutine: md.S schedule.c 
 	$(CC) $(CFLAGS) $? -o $@
 
 tools: $(TOOLS)
