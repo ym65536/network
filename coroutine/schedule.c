@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <assert.h>
 
 #define REDZONE	_ST_PAGE_SIZE
 
@@ -11,19 +12,6 @@
 _st_vp_t _st_this_vp;           /* This VP */
 st_thread_t *_st_this_thread;  /* Current thread */
 int _st_active_count = 0;       /* Active thread count */
-
-static char *_st_new_stk_segment(int size)
-{
-	static int zero_fd = -1;
-	int mmap_flags = MAP_PRIVATE;
-	void *vaddr;
-
-	vaddr = mmap(NULL, size, PROT_READ | PROT_WRITE, mmap_flags, zero_fd, 0);
-	if (vaddr == (void *)MAP_FAILED)
-		return NULL;
-
-	return (char *)vaddr;
-}
 
 st_stack_t *_st_stack_new(int stack_size)
 {
@@ -33,7 +21,7 @@ st_stack_t *_st_stack_new(int stack_size)
   if ((ts = (st_stack_t *)calloc(1, sizeof(st_stack_t))) == NULL)
     return NULL;
   ts->vaddr_size = stack_size + 2 * REDZONE;
-  ts->vaddr = _st_new_stk_segment(ts->vaddr_size);
+  ts->vaddr = mmap(NULL, ts->vaddr_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
   if (!ts->vaddr) 
   {
     free(ts);
@@ -46,6 +34,17 @@ st_stack_t *_st_stack_new(int stack_size)
   return ts;
 }
 
+void st_thread_yield(void *retval)
+{
+  st_thread_t *thread = _ST_CURRENT_THREAD();
+
+  _st_active_count--;
+
+  /* Find another thread to run */
+  _ST_SWITCH_CONTEXT(thread);
+  /* Not going to land here */
+}
+
 void _st_thread_main(void)
 {
 	st_thread_t *thread = _ST_CURRENT_THREAD();
@@ -54,7 +53,7 @@ void _st_thread_main(void)
 	thread->retval = (*thread->start)(thread->arg);
 
   /* All done, time to go away */
-//	st_thread_exit(thread->retval);
+	st_thread_yield(thread->retval);
 }
 
 st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
@@ -99,6 +98,95 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
 	_ST_ADD_RUNQ(thread);
 
 	return thread;
+}
+
+/*
+ * Start function for the idle thread
+ */
+/* ARGSUSED */
+void *_st_idle_thread_start(void *arg)
+{
+  st_thread_t *me = _ST_CURRENT_THREAD();
+
+  while (_st_active_count > 0) 
+  {
+    /* Idle vp till I/O is ready or the smallest timeout expired */
+    //_ST_VP_IDLE();
+	printf("Now In Idle thread...\n");
+
+    me->state = _ST_ST_RUNNABLE;
+    _ST_SWITCH_CONTEXT(me);
+  }
+
+  /* No more threads */
+  exit(0);
+
+  /* NOTREACHED */
+  return NULL;
+}
+
+void _st_vp_schedule(void)
+{
+  st_thread_t *thread;
+
+  if (_ST_RUNQ.next != &_ST_RUNQ) 
+  {
+    /* Pull thread off of the run queue */
+    thread = _ST_THREAD_PTR(_ST_RUNQ.next);
+    _ST_DEL_RUNQ(thread);
+  } 
+  else 
+  {
+    /* If there are no threads to run, switch to the idle thread */
+    thread = _st_this_vp.idle_thread;
+  }
+  assert(thread->state == _ST_ST_RUNNABLE);
+
+  /* Resume the thread */
+  thread->state = _ST_ST_RUNNING;
+  _ST_RESTORE_CONTEXT(thread);
+}
+
+/*
+ * Initialize this Virtual Processor
+ */
+int st_init(void)
+{
+  st_thread_t *thread;
+
+  if (_st_active_count) {
+    /* Already initialized */
+    return 0;
+  }
+
+  memset(&_st_this_vp, 0, sizeof(_st_vp_t));
+
+  ST_INIT_CLIST(&_ST_RUNQ);
+
+  _st_this_vp.pagesize = getpagesize();
+
+  /*
+   * Create idle thread
+   */
+  _st_this_vp.idle_thread = st_thread_create(_st_idle_thread_start, NULL);
+  if (!_st_this_vp.idle_thread)
+    return -1;
+  _st_this_vp.idle_thread->flags = _ST_FL_IDLE_THREAD;
+  _st_active_count--;
+  _ST_DEL_RUNQ(_st_this_vp.idle_thread);
+
+  /*
+   * Initialize primordial thread
+   */
+  thread = (st_thread_t *) calloc(1, sizeof(st_thread_t));
+  if (!thread)
+    return -1;
+  thread->state = _ST_ST_RUNNING;
+  thread->flags = _ST_FL_PRIMORDIAL;
+  _ST_SET_CURRENT_THREAD(thread);
+  _st_active_count++;
+
+  return 0;
 }
 
 int main(void)

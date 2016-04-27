@@ -14,10 +14,6 @@
 #include <sys/epoll.h>
 #include <string.h>
 #include <setjmp.h>
-
-#define ST_BEGIN_MACRO  {
-#define ST_END_MACRO    }
-
 #include "md.h"
 
 void _st_vp_schedule(void);
@@ -27,6 +23,8 @@ void _st_vp_schedule(void);
 #define MAX_DATA_BUF 256
 #define StackProtect char stack_down[1024 * 1024];
 
+#define ST_BEGIN_MACRO {
+#define ST_END_MACRO }
 
 /*****************************************
  * Circular linked list definitions
@@ -241,6 +239,13 @@ extern _st_eventsys_t *_st_eventsys;
  * Threads context switching
  */
 
+static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp, void (*_main)(void)) 
+{											
+	if (MD_SETJMP((_thread)->context))       
+		_main();                                
+	MD_GET_SP(_thread) = (long) (_sp);		
+};
+
 /*
  * Switch away from the current thread context by saving its state and
  * calling the thread scheduler
@@ -270,6 +275,26 @@ static void inline _ST_RESTORE_CONTEXT(st_thread_t* _thread)
  * Number of bytes reserved under the stack "bottom"
  */
 #define _ST_STACK_PAD_SIZE MD_STACK_PAD_SIZE
+
+/*****************************************
+ * Pointer conversion
+ */
+
+#ifndef offsetof
+#define offsetof(type, identifier) ((size_t)&(((type *)0)->identifier))
+#endif
+
+#define _ST_THREAD_PTR(_qp)         \
+    ((st_thread_t *)((char *)(_qp) - offsetof(st_thread_t, links)))
+
+#define _ST_THREAD_WAITQ_PTR(_qp)   \
+    ((st_thread_t *)((char *)(_qp) - offsetof(st_thread_t, wait_links)))
+
+#define _ST_THREAD_STACK_PTR(_qp)   \
+    ((st_stack_t *)((char*)(_qp) - offsetof(st_stack_t, links)))
+
+#define _ST_POLLQUEUE_PTR(_qp)      \
+    ((st_pollq_t *)((char *)(_qp) - offsetof(st_pollq_t, links)))
 
 #endif /* !__ST_COMMON_H__ */
 
