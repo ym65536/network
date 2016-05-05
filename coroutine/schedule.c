@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/mman.h>
 #include <assert.h>
 
@@ -15,23 +16,27 @@ int _st_active_count = 0;       /* Active thread count */
 
 st_stack_t *_st_stack_new(int stack_size)
 {
-  st_stack_t *ts;
+	st_stack_t *ts;
 
   /* Make a new thread stack object. */
-  if ((ts = (st_stack_t *)calloc(1, sizeof(st_stack_t))) == NULL)
-    return NULL;
-  ts->vaddr_size = stack_size + 2 * REDZONE;
-  ts->vaddr = mmap(NULL, ts->vaddr_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
-  if (!ts->vaddr) 
-  {
-    free(ts);
-    return NULL;
-  }
-  ts->stk_size = stack_size;
-  ts->stk_bottom = ts->vaddr + REDZONE;
-  ts->stk_top = ts->stk_bottom + stack_size;
+	if ((ts = (st_stack_t *)calloc(1, sizeof(st_stack_t))) == NULL)
+    	return NULL;
+	ts->vaddr_size = stack_size + 2 * REDZONE;
+#if 0
+  	ts->vaddr = mmap(NULL, ts->vaddr_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#else
+	ts->vaddr = malloc(ts->vaddr_size);
+#endif
+  	if (ts->vaddr == MAP_FAILED) 
+  	{
+		perror("mmap");
+		return NULL;
+  	}
+  	ts->stk_size = stack_size;
+  	ts->stk_bottom = ts->vaddr + REDZONE;
+  	ts->stk_top = ts->stk_bottom + stack_size;
 
-  return ts;
+  	return ts;
 }
 
 void st_thread_yield(void *retval)
@@ -189,7 +194,3 @@ int st_init(void)
   return 0;
 }
 
-int main(void)
-{
-	return 0;
-}

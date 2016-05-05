@@ -12,7 +12,7 @@ all: $(TARGET)
 #	$(CC) $(CFLAGS) -c $< -o $@
 
 #coroutine: main.c md.S schedule.c 
-coroutine: md.S schedule.c 
+coroutine: md.S schedule.c test.c 
 	$(CC) $(CFLAGS) $? -o $@
 
 tools: $(TOOLS)
