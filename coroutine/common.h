@@ -17,6 +17,7 @@
 #include "md.h"
 
 void _st_vp_schedule(void);
+void _st_thread_main(void);
 
 #define MAX_COROUTINE 1024
 #define MAX_EVENTS MAX_COROUTINE
@@ -239,11 +240,16 @@ extern _st_eventsys_t *_st_eventsys;
  * Threads context switching
  */
 
-static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp, void (*_main)(void)) 
+static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp) 
 {											
-	if (MD_SETJMP((_thread)->context))       
-		_main();                                
+	int ret = MD_SETJMP((_thread)->context);
+	if (ret != 0)       
+	{
+		printf("[INIT]ret=%d, thread=%08x jmp in main process...\n", ret, (unsigned int)_thread);
+		_st_thread_main();                                
+	}
 	MD_GET_SP(_thread) = (long) (_sp);		
+	printf("[INIT]ret=%d, thread=%08x jmp out...\n", ret, (unsigned int)_thread);
 };
 
 /*
@@ -252,10 +258,13 @@ static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp, void (*_main
  */
 void static inline _ST_SWITCH_CONTEXT(st_thread_t* _thread)       
 { 
-    if (!MD_SETJMP((_thread)->context)) 
+	int ret = MD_SETJMP((_thread)->context);
+    if (ret == 0) 
 	{ 
-      _st_vp_schedule();                  
-    }                                     
+		printf("[SWITCH]ret=%d, thread=%08x go to schedule process...\n", ret, (unsigned int)_thread);
+      	_st_vp_schedule();                  
+    } 
+	printf("[SWITCH]ret=%d, thread=%08x go out...\n", ret, (unsigned int)_thread);
 }
 /*
  * Restore a thread context that was saved by _ST_SWITCH_CONTEXT or
@@ -264,6 +273,7 @@ void static inline _ST_SWITCH_CONTEXT(st_thread_t* _thread)
 static void inline _ST_RESTORE_CONTEXT(st_thread_t* _thread)   
 {
     _ST_SET_CURRENT_THREAD(_thread);   
+	printf("[RESTORE]restore to thread=%08x process...\n", (unsigned)_thread);
     MD_LONGJMP((_thread)->context, 1); 
 }
 /*

@@ -95,7 +95,7 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
 	thread->start = start;
 	thread->arg = arg;
 
-	_ST_INIT_CONTEXT(thread, stack->sp, _st_thread_main);
+	_ST_INIT_CONTEXT(thread, stack->sp);
 
 	/* Make thread runnable */
 	thread->state = _ST_ST_RUNNABLE;
