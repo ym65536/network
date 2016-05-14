@@ -20,10 +20,10 @@
         .text
 
         /* _st_md_cxt_save(__jmp_buf env) */
-.globl _st_md_cxt_save
-        .type _st_md_cxt_save, @function
+.globl st_md_cxt_save
+        .type st_md_cxt_save, @function
         .align 16
-_st_md_cxt_save:
+st_md_cxt_save:
         movl 4(%esp), %eax
 
         /*
@@ -42,16 +42,16 @@ _st_md_cxt_save:
         movl %ebp, (JB_BP*4)(%eax)
         xorl %eax, %eax
         ret
-        .size _st_md_cxt_save, .-_st_md_cxt_save
+        .size st_md_cxt_save, .-st_md_cxt_save
 
 
 /****************************************************************/
 
         /* _st_md_cxt_restore(__jmp_buf env, int val) */
-.globl _st_md_cxt_restore
-        .type _st_md_cxt_restore, @function
+.globl st_md_cxt_restore
+        .type st_md_cxt_restore, @function
         .align 16
-_st_md_cxt_restore:
+st_md_cxt_restore:
         /* First argument is jmp_buf */
         movl 4(%esp), %ecx
         /* Second argument is return value */
@@ -71,7 +71,7 @@ _st_md_cxt_restore:
         incl %eax
         /* Jump to saved PC */
 1:      jmp *%edx
-        .size _st_md_cxt_restore, .-_st_md_cxt_restore
+        .size st_md_cxt_restore, .-st_md_cxt_restore
 
 /****************************************************************/
 
@@ -93,10 +93,10 @@ _st_md_cxt_restore:
         .text
 
         /* _st_md_cxt_save(__jmp_buf env) */
-.globl _st_md_cxt_save
-        .type _st_md_cxt_save, @function
+.globl st_md_cxt_save
+        .type st_md_cxt_save, @function
         .align 16
-_st_md_cxt_save:
+st_md_cxt_save:
         /*
          * Save registers.
          */
@@ -114,16 +114,16 @@ _st_md_cxt_save:
         movq %rax, (JB_PC*8)(%rdi)
         xorq %rax, %rax
         ret
-        .size _st_md_cxt_save, .-_st_md_cxt_save
+        .size st_md_cxt_save, .-st_md_cxt_save
 
 
 /****************************************************************/
 
         /* _st_md_cxt_restore(__jmp_buf env, int val) */
-.globl _st_md_cxt_restore
-        .type _st_md_cxt_restore, @function
+.globl st_md_cxt_restore
+        .type st_md_cxt_restore, @function
         .align 16
-_st_md_cxt_restore:
+st_md_cxt_restore:
         /*
          * Restore registers.
          */
@@ -142,7 +142,7 @@ _st_md_cxt_restore:
         movq (JB_RSP*8)(%rdi), %rsp
         /* Jump to saved PC */
         jmpq *%rdx
-        .size _st_md_cxt_restore, .-_st_md_cxt_restore
+        .size st_md_cxt_restore, .-st_md_cxt_restore
 
 /****************************************************************/
 

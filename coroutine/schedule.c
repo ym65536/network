@@ -7,14 +7,14 @@
 #include <sys/mman.h>
 #include <assert.h>
 
-#define REDZONE	_ST_PAGE_SIZE
+#define REDZONE	ST_PAGE_SIZE
 
 /* Global data */
-_st_vp_t _st_this_vp;           /* This VP */
-st_thread_t *_st_this_thread;  /* Current thread */
-int _st_active_count = 0;       /* Active thread count */
+st_vp_t st_this_vp;           /* This VP */
+st_thread_t *st_this_thread;  /* Current thread */
+int st_active_count = 0;       /* Active thread count */
 
-st_stack_t *_st_stack_new(int stack_size)
+st_stack_t *st_stack_new(int stack_size)
 {
 	st_stack_t *ts;
 
@@ -41,18 +41,16 @@ st_stack_t *_st_stack_new(int stack_size)
 
 void st_thread_yield(void *retval)
 {
-  st_thread_t *thread = _ST_CURRENT_THREAD();
-
-  _st_active_count--;
+  st_thread_t *thread = ST_CURRENT_THREAD();
 
   /* Find another thread to run */
-  _ST_SWITCH_CONTEXT(thread);
+  ST_SWITCH_CONTEXT(thread);
   /* Not going to land here */
 }
 
-void _st_thread_main(void)
+void st_thread_main(void)
 {
-	st_thread_t *thread = _ST_CURRENT_THREAD();
+	st_thread_t *thread = ST_CURRENT_THREAD();
 
     /* Run thread main */
 	thread->retval = (*thread->start)(thread->arg);
@@ -69,8 +67,8 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
 	char *sp;
 
 	int stk_size = ST_DEFAULT_STACK_SIZE;
-	stk_size = ((stk_size + _ST_PAGE_SIZE - 1) / _ST_PAGE_SIZE) * _ST_PAGE_SIZE;
-	stack = _st_stack_new(stk_size);
+	stk_size = ((stk_size + ST_PAGE_SIZE - 1) / ST_PAGE_SIZE) * ST_PAGE_SIZE;
+	stack = st_stack_new(stk_size);
 	if (!stack)
 	{
 		return NULL;
@@ -86,7 +84,7 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
 	{
 		sp = sp - ((unsigned long)sp & 0x3f);
 	}
-	stack->sp = sp - _ST_STACK_PAD_SIZE;
+	stack->sp = sp - ST_STACK_PAD_SIZE;
 
 	memset(thread, 0, sizeof(st_thread_t));
 
@@ -95,12 +93,12 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
 	thread->start = start;
 	thread->arg = arg;
 
-	_ST_INIT_CONTEXT(thread, stack->sp);
+	ST_INIT_CONTEXT(thread, stack->sp);
 
 	/* Make thread runnable */
-	thread->state = _ST_ST_RUNNABLE;
-	_st_active_count++;
-	_ST_ADD_RUNQ(thread);
+	thread->state = ST_ST_RUNNABLE;
+	st_active_count++;
+	ST_ADD_RUNQ(thread);
 
 	return thread;
 }
@@ -109,18 +107,18 @@ st_thread_t *st_thread_create(void *(*start)(void *arg), void *arg)
  * Start function for the idle thread
  */
 /* ARGSUSED */
-void *_st_idle_thread_start(void *arg)
+void *st_idle_thread_start(void *arg)
 {
-  st_thread_t *me = _ST_CURRENT_THREAD();
+  st_thread_t *me = ST_CURRENT_THREAD();
 
-  while (_st_active_count > 0) 
+  while (st_active_count > 0) 
   {
     /* Idle vp till I/O is ready or the smallest timeout expired */
     //_ST_VP_IDLE();
 	printf("Now In Idle thread...\n");
 
-    me->state = _ST_ST_RUNNABLE;
-    _ST_SWITCH_CONTEXT(me);
+    me->state = ST_ST_RUNNABLE;
+    ST_SWITCH_CONTEXT(me);
   }
 
   /* No more threads */
@@ -130,26 +128,26 @@ void *_st_idle_thread_start(void *arg)
   return NULL;
 }
 
-void _st_vp_schedule(void)
+void st_vp_schedule(void)
 {
   st_thread_t *thread;
 
-  if (_ST_RUNQ.next != &_ST_RUNQ) 
+  if (ST_RUNQ.next != &ST_RUNQ) 
   {
     /* Pull thread off of the run queue */
-    thread = _ST_THREAD_PTR(_ST_RUNQ.next);
-    _ST_DEL_RUNQ(thread);
+    thread = ST_THREAD_PTR(ST_RUNQ.next);
+    ST_DEL_RUNQ(thread);
   } 
   else 
   {
     /* If there are no threads to run, switch to the idle thread */
-    thread = _st_this_vp.idle_thread;
+    thread = st_this_vp.idle_thread;
   }
-  assert(thread->state == _ST_ST_RUNNABLE);
+  assert(thread->state == ST_ST_RUNNABLE);
 
   /* Resume the thread */
-  thread->state = _ST_ST_RUNNING;
-  _ST_RESTORE_CONTEXT(thread);
+  thread->state = ST_ST_RUNNING;
+  ST_RESTORE_CONTEXT(thread);
 }
 
 /*
@@ -159,26 +157,26 @@ int st_init(void)
 {
   st_thread_t *thread;
 
-  if (_st_active_count) {
+  if (st_active_count) {
     /* Already initialized */
     return 0;
   }
 
-  memset(&_st_this_vp, 0, sizeof(_st_vp_t));
+  memset(&st_this_vp, 0, sizeof(st_vp_t));
 
-  ST_INIT_CLIST(&_ST_RUNQ);
+  ST_INIT_CLIST(&ST_RUNQ);
 
-  _st_this_vp.pagesize = getpagesize();
+  st_this_vp.pagesize = getpagesize();
 
   /*
    * Create idle thread
    */
-  _st_this_vp.idle_thread = st_thread_create(_st_idle_thread_start, NULL);
-  if (!_st_this_vp.idle_thread)
+  st_this_vp.idle_thread = st_thread_create(st_idle_thread_start, NULL);
+  if (!st_this_vp.idle_thread)
     return -1;
-  _st_this_vp.idle_thread->flags = _ST_FL_IDLE_THREAD;
-  _st_active_count--;
-  _ST_DEL_RUNQ(_st_this_vp.idle_thread);
+  st_this_vp.idle_thread->flags = ST_FL_IDLE_THREAD;
+  st_active_count--;
+  ST_DEL_RUNQ(st_this_vp.idle_thread);
 
   /*
    * Initialize primordial thread
@@ -186,10 +184,10 @@ int st_init(void)
   thread = (st_thread_t *) calloc(1, sizeof(st_thread_t));
   if (!thread)
     return -1;
-  thread->state = _ST_ST_RUNNING;
-  thread->flags = _ST_FL_PRIMORDIAL;
-  _ST_SET_CURRENT_THREAD(thread);
-  _st_active_count++;
+  thread->state = ST_ST_RUNNING;
+  thread->flags = ST_FL_PRIMORDIAL;
+  ST_SET_CURRENT_THREAD(thread);
+  st_active_count++;
 
   return 0;
 }

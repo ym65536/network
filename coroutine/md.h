@@ -18,11 +18,11 @@
 
 #define MD_GET_SP(_t) (_t)->context[0].__jmpbuf[JB_RSP]
 
-#define MD_SETJMP(env) _st_md_cxt_save(env)
-#define MD_LONGJMP(env, val) _st_md_cxt_restore(env, val)
+#define MD_SETJMP(env) st_md_cxt_save(env)
+#define MD_LONGJMP(env, val) st_md_cxt_restore(env, val)
 
-extern int _st_md_cxt_save(jmp_buf env);
-extern void _st_md_cxt_restore(jmp_buf env, int val);
+extern int st_md_cxt_save(jmp_buf env);
+extern void st_md_cxt_restore(jmp_buf env, int val);
 
 #ifndef MD_STACK_PAD_SIZE
 #define MD_STACK_PAD_SIZE 128

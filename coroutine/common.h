@@ -16,8 +16,8 @@
 #include <setjmp.h>
 #include "md.h"
 
-void _st_vp_schedule(void);
-void _st_thread_main(void);
+void st_vp_schedule(void);
+void st_thread_main(void);
 
 #define MAX_COROUTINE 1024
 #define MAX_EVENTS MAX_COROUTINE
@@ -35,7 +35,7 @@ typedef struct _st_clist
 {
   struct _st_clist *next;
   struct _st_clist *prev;
-} _st_clist_t;
+} st_clist_t;
 
 /* Insert element "_e" into the list, before "_l" */
 #define ST_INSERT_BEFORE(_e,_l)	 \
@@ -96,7 +96,7 @@ typedef struct _st_clist
  */
 typedef struct st_stack
 {
-  _st_clist_t links;
+  st_clist_t links;
   char *vaddr;                /* Base of stack's allocated memory */
   int  vaddr_size;            /* Size of stack's allocated memory */
   int  stk_size;              /* Size of usable portion of the stack */
@@ -116,7 +116,7 @@ struct st_thread
 	void *arg;                  /* Argument of the start function */
 	void *retval;               /* Return value of the start function */
 	st_stack_t *stack;	      /* Info about thread's stack */
-	_st_clist_t links;          /* For putting on run/sleep/zombie queue */
+	st_clist_t links;          /* For putting on run/sleep/zombie queue */
 	int started;
 	char data[MAX_DATA_BUF];
 	int data_len;
@@ -134,91 +134,77 @@ typedef struct _st_eventsys_ops {
   int  (*fd_new)(int);                       /* New descriptor allocated */
   int  (*fd_close)(int);                     /* Descriptor closed */
   int  (*fd_getlimit)(void);                 /* Descriptor hard limit */
-} _st_eventsys_t;
+} st_eventsys_t;
 
 
 typedef struct _st_vp {
   st_thread_t *idle_thread;  /* Idle thread for this vp */
   //st_utime_t last_clock;      /* The last time we went into vp_check_clock() */
 
-  _st_clist_t run_q;          /* run queue for this vp */
-  _st_clist_t io_q;           /* io queue for this vp */
-  _st_clist_t zombie_q;       /* zombie queue for this vp */
+  st_clist_t run_q;          /* run queue for this vp */
+  st_clist_t io_q;           /* io queue for this vp */
+  st_clist_t zombie_q;       /* zombie queue for this vp */
   int pagesize;
 
   st_thread_t *sleep_q;      /* sleep queue for this vp */
   int sleepq_size;	      /* number of threads on sleep queue */
-} _st_vp_t;
+} st_vp_t;
 
 
 /*****************************************
  * Current vp, thread, and event system
  */
 
-extern _st_vp_t	    _st_this_vp;
-extern st_thread_t *_st_this_thread;
-extern _st_eventsys_t *_st_eventsys;
+extern st_vp_t			st_this_vp;
+extern st_thread_t*		st_this_thread;
+extern st_eventsys_t*	st_eventsys;
 
-#define _ST_CURRENT_THREAD()            (_st_this_thread)
-#define _ST_SET_CURRENT_THREAD(_thread) (_st_this_thread = (_thread))
+#define ST_CURRENT_THREAD()            (st_this_thread)
+#define ST_SET_CURRENT_THREAD(_thread) (st_this_thread = (_thread))
 
-#define _ST_LAST_CLOCK                  (_st_this_vp.last_clock)
+#define ST_LAST_CLOCK                  (st_this_vp.last_clock)
 
-#define _ST_RUNQ                        (_st_this_vp.run_q)
-#define _ST_IOQ                         (_st_this_vp.io_q)
-#define _ST_ZOMBIEQ                     (_st_this_vp.zombie_q)
+#define ST_RUNQ                        (st_this_vp.run_q)
+#define ST_IOQ                         (st_this_vp.io_q)
+#define ST_ZOMBIEQ                     (st_this_vp.zombie_q)
 #ifdef DEBUG
-#define _ST_THREADQ                     (_st_this_vp.thread_q)
+#define ST_THREADQ                     (st_this_vp.thread_q)
 #endif
 
-#define _ST_PAGE_SIZE                   (_st_this_vp.pagesize)
+#define ST_PAGE_SIZE                   (st_this_vp.pagesize)
 
-#define _ST_SLEEPQ                      (_st_this_vp.sleep_q)
-#define _ST_SLEEPQ_SIZE                 (_st_this_vp.sleepq_size)
+#define ST_SLEEPQ                      (st_this_vp.sleep_q)
+#define ST_SLEEPQ_SIZE                 (st_this_vp.sleepq_size)
 
-#define _ST_VP_IDLE()                   (*_st_eventsys->dispatch)()
+#define ST_VP_IDLE()                   (*st_eventsys->dispatch)()
 
 
 /*****************************************
  * vp queues operations
  */
+#define ST_ADD_RUNQ(_thr)  ST_APPEND_LINK(&(_thr)->links, &ST_RUNQ)
+#define ST_DEL_RUNQ(_thr)  ST_REMOVE_LINK(&(_thr)->links)
 
-#define _ST_ADD_IOQ(_pq)    ST_APPEND_LINK(&_pq.links, &_ST_IOQ)
-#define _ST_DEL_IOQ(_pq)    ST_REMOVE_LINK(&_pq.links)
-
-#define _ST_ADD_RUNQ(_thr)  ST_APPEND_LINK(&(_thr)->links, &_ST_RUNQ)
-#define _ST_DEL_RUNQ(_thr)  ST_REMOVE_LINK(&(_thr)->links)
-
-#define _ST_ADD_SLEEPQ(_thr, _timeout)  _st_add_sleep_q(_thr, _timeout)
-#define _ST_DEL_SLEEPQ(_thr)		_st_del_sleep_q(_thr)
-
-#define _ST_ADD_ZOMBIEQ(_thr)  ST_APPEND_LINK(&(_thr)->links, &_ST_ZOMBIEQ)
-#define _ST_DEL_ZOMBIEQ(_thr)  ST_REMOVE_LINK(&(_thr)->links)
-
-#ifdef DEBUG
-#define _ST_ADD_THREADQ(_thr)  ST_APPEND_LINK(&(_thr)->tlink, &_ST_THREADQ)
-#define _ST_DEL_THREADQ(_thr)  ST_REMOVE_LINK(&(_thr)->tlink)
-#endif
-
-
+#define ST_ADD_SLEEPQ(_thr, _timeout)  _st_add_sleep_q(_thr, _timeout)
+#define ST_DEL_SLEEPQ(_thr)		_st_del_sleep_q(_thr)
 /*****************************************
  * Thread states and flags
  */
 
-#define _ST_ST_RUNNING      0 
-#define _ST_ST_RUNNABLE     1
-#define _ST_ST_IO_WAIT      2
-#define _ST_ST_LOCK_WAIT    3
-#define _ST_ST_COND_WAIT    4
-#define _ST_ST_SLEEPING     5
-#define _ST_ST_ZOMBIE       6
-#define _ST_ST_SUSPENDED    7
+#define ST_ST_RUNNING      0 
+#define ST_ST_RUNNABLE     1
+#define ST_ST_IO_WAIT      2
+#define ST_ST_LOCK_WAIT    3
+#define ST_ST_COND_WAIT    4
+#define ST_ST_SLEEPING     5
+#define ST_ST_ZOMBIE       6
+#define ST_ST_SUSPENDED    7
 
-#define _ST_FL_PRIMORDIAL   0x01
-#define _ST_FL_IDLE_THREAD  0x02
-#define _ST_FL_ON_SLEEPQ    0x04
-#define _ST_FL_INTERRUPT    0x08
-#define _ST_FL_TIMEDOUT     0x10
+#define ST_FL_PRIMORDIAL   0x01
+#define ST_FL_IDLE_THREAD  0x02
+#define ST_FL_ON_SLEEPQ    0x04
+#define ST_FL_INTERRUPT    0x08
+#define ST_FL_TIMEDOUT     0x10
 
 
 /*****************************************
@@ -246,7 +232,7 @@ static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp)
 	if (ret != 0)       
 	{
 		printf("[INIT]ret=%d, thread=%08x jmp in main process...\n", ret, (unsigned int)_thread);
-		_st_thread_main();                                
+		st_thread_main();                                
 	}
 	MD_GET_SP(_thread) = (long) (_sp);		
 	printf("[INIT]ret=%d, thread=%08x jmp out...\n", ret, (unsigned int)_thread);
@@ -256,13 +242,13 @@ static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp)
  * Switch away from the current thread context by saving its state and
  * calling the thread scheduler
  */
-void static inline _ST_SWITCH_CONTEXT(st_thread_t* _thread)       
+void static inline ST_SWITCH_CONTEXT(st_thread_t* _thread)       
 { 
 	int ret = MD_SETJMP((_thread)->context);
     if (ret == 0) 
 	{ 
 		printf("[SWITCH]ret=%d, thread=%08x go to schedule process...\n", ret, (unsigned int)_thread);
-      	_st_vp_schedule();                  
+      	st_vp_schedule();                  
     } 
 	printf("[SWITCH]ret=%d, thread=%08x go out...\n", ret, (unsigned int)_thread);
 }
@@ -270,21 +256,21 @@ void static inline _ST_SWITCH_CONTEXT(st_thread_t* _thread)
  * Restore a thread context that was saved by _ST_SWITCH_CONTEXT or
  * initialized by _ST_INIT_CONTEXT
  */
-static void inline _ST_RESTORE_CONTEXT(st_thread_t* _thread)   
+static void inline ST_RESTORE_CONTEXT(st_thread_t* _thread)   
 {
-    _ST_SET_CURRENT_THREAD(_thread);   
+    ST_SET_CURRENT_THREAD(_thread);   
 	printf("[RESTORE]restore to thread=%08x process...\n", (unsigned)_thread);
     MD_LONGJMP((_thread)->context, 1); 
 }
 /*
  * Initialize the thread context preparing it to execute _main
  */
-#define _ST_INIT_CONTEXT MD_INIT_CONTEXT
+#define ST_INIT_CONTEXT MD_INIT_CONTEXT
 
 /*
  * Number of bytes reserved under the stack "bottom"
  */
-#define _ST_STACK_PAD_SIZE MD_STACK_PAD_SIZE
+#define ST_STACK_PAD_SIZE MD_STACK_PAD_SIZE
 
 /*****************************************
  * Pointer conversion
@@ -294,16 +280,16 @@ static void inline _ST_RESTORE_CONTEXT(st_thread_t* _thread)
 #define offsetof(type, identifier) ((size_t)&(((type *)0)->identifier))
 #endif
 
-#define _ST_THREAD_PTR(_qp)         \
+#define ST_THREAD_PTR(_qp)         \
     ((st_thread_t *)((char *)(_qp) - offsetof(st_thread_t, links)))
 
-#define _ST_THREAD_WAITQ_PTR(_qp)   \
+#define ST_THREAD_WAITQ_PTR(_qp)   \
     ((st_thread_t *)((char *)(_qp) - offsetof(st_thread_t, wait_links)))
 
-#define _ST_THREAD_STACK_PTR(_qp)   \
+#define ST_THREAD_STACK_PTR(_qp)   \
     ((st_stack_t *)((char*)(_qp) - offsetof(st_stack_t, links)))
 
-#define _ST_POLLQUEUE_PTR(_qp)      \
+#define ST_POLLQUEUE_PTR(_qp)      \
     ((st_pollq_t *)((char *)(_qp) - offsetof(st_pollq_t, links)))
 
 #endif /* !__ST_COMMON_H__ */
