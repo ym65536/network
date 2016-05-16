@@ -8,10 +8,11 @@ void thread1(void* args)
 	char* data = (char* )args;
 	st_thread_t* ctid = ST_CURRENT_THREAD();
 	static int seq = 0;
-	printf("T1: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
+	printf("T1 ENTER: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
 	seq++;
 
 	ST_SWITCH_CONTEXT(ctid);
+	printf("T1 OUT: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
 }
 
 void thread2(void* args)
@@ -19,10 +20,11 @@ void thread2(void* args)
 	char* data = (char* )args;
 	st_thread_t* ctid = ST_CURRENT_THREAD();
 	static int seq = 0;
-	printf("T2: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
+	printf("T2 ENTER: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
 	seq++;
 
 	ST_SWITCH_CONTEXT(ctid);
+	printf("T2 OUT: data=%s, seqno=%d, ctid=%08x, stid1=%08x, stid2=%08x\n", data, seq, (unsigned int)ctid, (unsigned int)stid1, (unsigned int)stid2);
 }
 
 int main(void)

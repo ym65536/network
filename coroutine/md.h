@@ -12,11 +12,9 @@
   return (tv.tv_sec * 1000000LL + tv.tv_usec)
 
 
-#ifndef JB_RSP
-#define JB_RSP 6
-#endif
+#define JB_SP  4
 
-#define MD_GET_SP(_t) (_t)->context[0].__jmpbuf[JB_RSP]
+#define MD_GET_SP(_t) (_t)->context[0].__jmpbuf[JB_SP]
 
 #define MD_SETJMP(env) st_md_cxt_save(env)
 #define MD_LONGJMP(env, val) st_md_cxt_restore(env, val)

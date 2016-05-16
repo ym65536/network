@@ -1,3 +1,4 @@
+# cd /mnt && mount -t vboxsf share ./share/
 CC := gcc
 CFLAGS := -g -fno-stack-protector
 TOOLS := client serverA serverB
