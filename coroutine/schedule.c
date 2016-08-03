@@ -130,24 +130,27 @@ void *st_idle_thread_start(void *arg)
 
 void st_vp_schedule(void)
 {
-  st_thread_t *thread;
+	st_thread_t *thread;
 
-  if (ST_RUNQ.next != &ST_RUNQ) 
-  {
-    /* Pull thread off of the run queue */
-    thread = ST_THREAD_PTR(ST_RUNQ.next);
-    ST_DEL_RUNQ(thread);
-  } 
-  else 
-  {
-    /* If there are no threads to run, switch to the idle thread */
-    thread = st_this_vp.idle_thread;
-  }
-  assert(thread->state == ST_ST_RUNNABLE);
+	if (ST_RUNQ.next != &ST_RUNQ) 
+	{
+		/* Pull thread off of the run queue */
+		thread = ST_THREAD_PTR(ST_RUNQ.next);
+		
+		// just fetch thread, move it to last 
+		ST_DEL_RUNQ(thread);
+		ST_ADD_RUNQ(thread);
+	} 
+	else 
+	{
+		/* If there are no threads to run, switch to the idle thread */
+		thread = st_this_vp.idle_thread;
+	}
+	assert(thread->state == ST_ST_RUNNABLE);
 
-  /* Resume the thread */
-  thread->state = ST_ST_RUNNING;
-  ST_RESTORE_CONTEXT(thread);
+	/* Resume the thread */
+	thread->state = ST_ST_RUNNING;
+	ST_RESTORE_CONTEXT(thread);
 }
 
 /*
