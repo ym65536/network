@@ -8,11 +8,13 @@
 
 int main(int argc, const char* argv[])
 {
+#if 0
 	if (argc < 3)
 	{
-//		fprintf(stderr, "usage: server <ip> <port>\n");
-//		exit(1);
+		fprintf(stderr, "usage: server <ip> <port>\n");
+		exit(1);
 	}
+#endif
 
 	const char *ip = "127.0.0.1"; //argv[1];
 	unsigned short port = 1111; //(unsigned short)atoi(argv[2]);
@@ -28,12 +30,13 @@ int main(int argc, const char* argv[])
 	
 	listen(listen_fd, 1024);
 
+	struct sockaddr_in cliaddr;
+	int conn_fd = accept(listen_fd, NULL, NULL);
+
 	while (1)
 	{
-		int conn_fd = accept(listen_fd, NULL, NULL);
-
 		//recv
-		char recv_buf[255] = {0};
+		char recv_buf[1024] = {0};
 		ssize_t recv_len = recv(conn_fd, recv_buf, sizeof(recv_buf), 0);
 		if (recv_len < 0)
 		{
@@ -43,13 +46,13 @@ int main(int argc, const char* argv[])
 		printf("server_recv: [%s]\n", recv_buf);
 
 		/*processing*/
-		int i;
-		for (i = 0; i < recv_len; ++i)
-		{
-			recv_buf[i] = toupper(recv_buf[i]);
-		}
+		int seqno = 0;
+		memcpy(&seqno, recv_buf, sizeof(int));
+		printf("req seqno is %d, just sleep for a moment...\n", seqno++);
+		usleep(1000 * 500);
 
 		//send
+		memcpy(recv_buf, &seqno, sizeof(int));
 		ssize_t send_len = send(conn_fd, recv_buf, recv_len, 0);
 		if (send_len != recv_len)
 		{
