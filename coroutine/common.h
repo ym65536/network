@@ -162,22 +162,10 @@ extern st_eventsys_t*	st_eventsys;
 #define ST_CURRENT_THREAD()            (st_this_thread)
 #define ST_SET_CURRENT_THREAD(_thread) (st_this_thread = (_thread))
 
-#define ST_LAST_CLOCK                  (st_this_vp.last_clock)
-
 #define ST_RUNQ                        (st_this_vp.run_q)
 #define ST_IOQ                         (st_this_vp.io_q)
-#define ST_ZOMBIEQ                     (st_this_vp.zombie_q)
-#ifdef DEBUG
-#define ST_THREADQ                     (st_this_vp.thread_q)
-#endif
-
-#define ST_PAGE_SIZE                   (st_this_vp.pagesize)
-
-#define ST_SLEEPQ                      (st_this_vp.sleep_q)
-#define ST_SLEEPQ_SIZE                 (st_this_vp.sleepq_size)
 
 #define ST_VP_IDLE()                   (*st_eventsys->dispatch)()
-
 
 /*****************************************
  * vp queues operations
@@ -185,8 +173,6 @@ extern st_eventsys_t*	st_eventsys;
 #define ST_ADD_RUNQ(_thr)  ST_APPEND_LINK(&(_thr)->links, &ST_RUNQ)
 #define ST_DEL_RUNQ(_thr)  ST_REMOVE_LINK(&(_thr)->links)
 
-#define ST_ADD_SLEEPQ(_thr, _timeout)  _st_add_sleep_q(_thr, _timeout)
-#define ST_DEL_SLEEPQ(_thr)		_st_del_sleep_q(_thr)
 /*****************************************
  * Thread states and flags
  */
@@ -199,34 +185,22 @@ extern st_eventsys_t*	st_eventsys;
 #define ST_ST_SLEEPING     5
 #define ST_ST_ZOMBIE       6
 #define ST_ST_SUSPENDED    7
-
 #define ST_FL_PRIMORDIAL   0x01
 #define ST_FL_IDLE_THREAD  0x02
 #define ST_FL_ON_SLEEPQ    0x04
 #define ST_FL_INTERRUPT    0x08
 #define ST_FL_TIMEDOUT     0x10
 
-
-/*****************************************
- * Pointer conversion
- */
-
-#ifndef offsetof
-#define offsetof(type, identifier) ((size_t)&(((type *)0)->identifier))
-#endif
-
-/*****************************************
- * Constants
- */
-
-#define ST_UTIME_NO_TIMEOUT ((st_utime_t) -1LL)
-#define ST_DEFAULT_STACK_SIZE (128*1024)  /* Includes register stack size */
+#define ST_STACK_PAD_SIZE		MD_STACK_PAD_SIZE
+#define ST_PAGE_SIZE			(st_this_vp.pagesize)
+#define ST_UTIME_NO_TIMEOUT 	((st_utime_t) -1LL)
+#define ST_DEFAULT_STACK_SIZE 	(128*1024)  /* Includes register stack size */
 
 /*****************************************
  * Threads context switching
  */
 
-static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp) 
+static inline void ST_INIT_CONTEXT(st_thread_t* _thread, void* _sp) 
 {											
 	int ret = MD_SETJMP((_thread)->context);
 	if (ret != 0)       
@@ -243,7 +217,8 @@ static inline void MD_INIT_CONTEXT(st_thread_t* _thread, void* _sp)
  * calling the thread scheduler
  */
 void static inline ST_SWITCH_CONTEXT(st_thread_t* _thread)       
-{ 
+{
+	_thread->state = ST_ST_RUNNABLE;
 	int ret = MD_SETJMP((_thread)->context);
     if (ret == 0) 
 	{ 
@@ -262,15 +237,6 @@ static void inline ST_RESTORE_CONTEXT(st_thread_t* _thread)
 	printf("[RESTORE]restore to thread=%08x process...\n", (unsigned)_thread);
     MD_LONGJMP((_thread)->context, 1); 
 }
-/*
- * Initialize the thread context preparing it to execute _main
- */
-#define ST_INIT_CONTEXT MD_INIT_CONTEXT
-
-/*
- * Number of bytes reserved under the stack "bottom"
- */
-#define ST_STACK_PAD_SIZE MD_STACK_PAD_SIZE
 
 /*****************************************
  * Pointer conversion

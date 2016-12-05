@@ -6,9 +6,12 @@ STDIR = /mnt/software/statethread
 TARGETDIR   = $(STDIR)/$(OS)_$(shell uname -r)_$(BUILD)
 
 LIB = $(TARGETDIR)/libst.a
-CFLAG = -g -I$(TARGETDIR)/
+CFLAG = -g -I$(TARGETDIR)/ -I$(STDIR)
 
 all: $(TARGET)
+
+test: test.c
+	gcc $(CFLAG) $< -o $@ $(LIB)
 
 server: server.c
 	gcc $(CFLAG) $< -o $@ $(LIB)
